@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>我的课表</title>
+  <style>
+    :root { --ink:#241b2d; --muted:#746c7e; --line:#e7e1ed; --violet:#63258b; --paper:#fcfbfd; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(160deg,#f7f1fb 0%,#fff 48%,#f7f8ff 100%); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; min-height:100vh; }
+    .page { max-width:1460px; margin:0 auto; padding:42px 28px 56px; }
+    .top { display:flex; justify-content:space-between; gap:20px; align-items:end; border-bottom:1px solid var(--line); padding-bottom:25px; }
+    h1 { margin:0; color:#3f175c; font-size:30px; letter-spacing:.02em; }
+    .term { margin:8px 0 0; color:var(--muted); font-size:14px; }
+    .picker { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:14px; }
+    select { appearance:none; border:1px solid #d5c8df; background:#fff; border-radius:10px; color:var(--ink); font:inherit; font-weight:600; padding:11px 38px 11px 14px; cursor:pointer; background-image:linear-gradient(45deg,transparent 50%,#63258b 50%),linear-gradient(135deg,#63258b 50%,transparent 50%); background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+    .week-caption { display:flex; justify-content:space-between; align-items:center; margin:27px 0 14px; gap:16px; }
+    .week-caption h2 { margin:0; color:#3f175c; font-size:20px; }
+    .week-caption p { margin:0; color:var(--muted); font-size:14px; }
+    .schedule { display:grid; grid-template-columns:116px repeat(7,minmax(142px,1fr)); border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#fff; box-shadow:0 10px 34px rgba(56,22,83,.07); }
+    .corner,.day { background:#3f175c; color:#fff; padding:15px 10px; font-weight:700; text-align:center; border-right:1px solid rgba(255,255,255,.18); min-height:68px; display:flex; flex-direction:column; justify-content:center; }
+    .day small { opacity:.78; font-weight:500; margin-top:3px; }
+    .slot { min-height:164px; padding:18px 12px; display:flex; flex-direction:column; justify-content:center; text-align:center; background:#faf7fc; border-top:1px solid var(--line); border-right:1px solid var(--line); }
+    .slot b { font-size:15px; }
+    .slot span { color:var(--muted); font-size:13px; margin-top:5px; }
+    .cell { min-height:164px; padding:10px; border-top:1px solid var(--line); border-right:1px solid var(--line); background:#fff; display:flex; gap:9px; flex-direction:column; }
+    .course { border-left:5px solid var(--course); background:var(--tint); border-radius:9px; padding:10px 10px 9px; line-height:1.42; }
+    .course-name { font-size:14px; font-weight:750; }
+    .course-meta { margin-top:6px; color:#554d5e; font-size:12px; }
+    .course-place { margin-top:2px; color:#554d5e; font-size:12px; }
+    .empty { color:#b6b0bc; align-items:center; justify-content:center; font-size:13px; }
+    .legend { display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:19px; color:#625a6b; font-size:13px; }
+    .legend-item { display:flex; align-items:center; gap:7px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:var(--course); }
+    .mobile-schedule { display:none; }
+    .hint { margin:24px 0 0; color:var(--muted); font-size:13px; }
+    @media (max-width:760px) {
+      .page { padding:25px 16px 36px; }
+      .top { align-items:start; flex-direction:column; padding-bottom:20px; }
+      h1 { font-size:26px; }
+      .picker { width:100%; justify-content:space-between; }
+      select { min-width:145px; }
+      .week-caption { align-items:start; flex-direction:column; gap:6px; margin:22px 0 12px; }
+      .schedule { display:none; }
+      .mobile-schedule { display:grid; gap:12px; }
+      .day-card { overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 7px 22px rgba(56,22,83,.06); }
+      .day-card-header { display:flex; justify-content:space-between; align-items:center; background:#3f175c; color:#fff; padding:12px 14px; font-size:15px; font-weight:700; }
+      .day-card-header span { opacity:.78; font-size:13px; font-weight:500; }
+      .day-course { padding:12px 14px; border-bottom:1px solid var(--line); }
+      .day-course:last-child { border-bottom:0; }
+      .day-course .course { padding:11px; }
+      .mobile-empty { padding:17px 14px; color:#9e97a5; font-size:14px; }
+      .legend { gap:8px 14px; margin-top:17px; }
+      .hint { line-height:1.55; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="top">
+      <div><h1>我的课表</h1><p class="term">2026–2027 学年第一学期</p></div>
+      <label class="picker">选择周次 <select id="weekSelect" aria-label="选择周次"></select></label>
+    </section>
+    <section class="week-caption"><div><h2 id="weekTitle"></h2><p id="weekDates"></p></div><p>同一课程始终使用相同颜色</p></section>
+    <section class="schedule" id="schedule" aria-label="周课程表"></section>
+    <section class="mobile-schedule" id="mobileSchedule" aria-label="手机端周课程表"></section>
+    <section class="legend" id="legend" aria-label="课程颜色说明"></section>
+    <p class="hint">课程显示范围：第 2–17 周；英语阅读与写作已移除。</p>
+  </main>
+  <script>
+    const baseWeek2 = new Date(2026, 8, 7); // 2026-09-07, Monday of week 2
+    const days = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"];
+    const slots = [
+      { key:"morning", label:"上午", time:"第3–4节\n09:50–11:25" },
+      { key:"afternoon", label:"下午", time:"第6–8节\n14:30–16:55" },
+      { key:"evening", label:"晚上", time:"第11–12节\n19:30–21:05" },
+    ];
+    const colors = {
+      "中国美学专题研究": ["#9b4dca","#f5eafd"],
+      "中国式现代化的理论与实践": ["#d14b76","#fff0f4"],
+      "数智时代的论文写作与学术规范": ["#367bc0","#edf6ff"],
+      "数智时代的语言研究导论": ["#15856e","#e9f8f3"],
+      "文艺美学专题研究": ["#c57913","#fff5e5"],
+    };
+    const courses = [
+      { name:"中国美学专题研究", day:1, slot:"evening", weeks:[2,17], period:"第11–12节", time:"19:30–21:05", teacher:"侯宏堂", place:"文学院文典楼F318" },
+      { name:"中国式现代化的理论与实践", day:2, slot:"morning", weeks:[2,17], period:"第3–4节", time:"09:50–11:25", teacher:"曹康康", place:"1号楼2010105" },
+      { name:"数智时代的论文写作与学术规范", day:2, slot:"evening", weeks:[2,17], period:"第11–12节", time:"19:30–21:05", teacher:"任群", place:"文学院文典楼F108" },
+      { name:"数智时代的语言研究导论", day:3, slot:"afternoon", weeks:[2,17], period:"第6–8节", time:"14:30–16:55", teacher:"李伟", place:"文学院文典楼F108" },
+      { name:"数智时代的语言研究导论", day:4, slot:"morning", weeks:[2,17], period:"第3–4节", time:"09:50–11:25", teacher:"胡承俊", place:"文学院文典楼F108" },
+      { name:"文艺美学专题研究", day:5, slot:"afternoon", weeks:[2,17], period:"第6–7节", time:"14:30–16:05", teacher:"乔乐义", place:"文学院文典楼F318" },
+    ];
+    const select = document.querySelector("#weekSelect");
+    for (let week = 2; week <= 18; week++) select.add(new Option(`第 ${week} 周`, week));
+    select.value = "2";
+    const formatDate = d => `${d.getMonth()+1}月${d.getDate()}日`;
+    function render() {
+      const week = Number(select.value);
+      const monday = new Date(baseWeek2); monday.setDate(baseWeek2.getDate() + (week - 2) * 7);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      document.querySelector("#weekTitle").textContent = `第 ${week} 周课表`;
+      document.querySelector("#weekDates").textContent = `${monday.getFullYear()} 年 ${formatDate(monday)} 至 ${formatDate(sunday)}`;
+      const schedule = document.querySelector("#schedule"); schedule.innerHTML = "";
+      schedule.insertAdjacentHTML("beforeend", '<div class="corner">时段 / 时间</div>');
+      days.forEach((day, index) => { const date = new Date(monday); date.setDate(monday.getDate()+index); schedule.insertAdjacentHTML("beforeend", `<div class="day">${day}<small>${formatDate(date)}</small></div>`); });
+      slots.forEach(slot => {
+        schedule.insertAdjacentHTML("beforeend", `<div class="slot"><b>${slot.label}</b><span>${slot.time.replace("\n","<br>")}</span></div>`);
+        days.forEach((_, day) => {
+          const items = courses.filter(c => c.day === day && c.slot === slot.key && week >= c.weeks[0] && week <= c.weeks[1]);
+          const cell = document.createElement("div"); cell.className = `cell${items.length ? "" : " empty"}`;
+          if (!items.length) cell.textContent = "—";
+          items.forEach(c => { const [color,tint] = colors[c.name]; cell.insertAdjacentHTML("beforeend", `<article class="course" style="--course:${color};--tint:${tint}"><div class="course-name">${c.name}</div><div class="course-meta">${c.period} · ${c.time}<br>第${c.weeks[0]}–${c.weeks[1]}周 · ${c.teacher}</div><div class="course-place">${c.place}</div></article>`); });
+          schedule.append(cell);
+        });
+      });
+      const mobileSchedule = document.querySelector("#mobileSchedule"); mobileSchedule.innerHTML = "";
+      days.forEach((dayName, day) => {
+        const date = new Date(monday); date.setDate(monday.getDate() + day);
+        const dayCourses = courses.filter(c => c.day === day && week >= c.weeks[0] && week <= c.weeks[1]);
+        const card = document.createElement("article"); card.className = "day-card";
+        card.insertAdjacentHTML("beforeend", `<header class="day-card-header">${dayName}<span>${formatDate(date)}</span></header>`);
+        if (!dayCourses.length) card.insertAdjacentHTML("beforeend", '<p class="mobile-empty">当天没有课程</p>');
+        dayCourses.sort((a,b) => slots.findIndex(s=>s.key===a.slot) - slots.findIndex(s=>s.key===b.slot)).forEach(c => {
+          const [color,tint] = colors[c.name];
+          card.insertAdjacentHTML("beforeend", `<div class="day-course"><article class="course" style="--course:${color};--tint:${tint}"><div class="course-name">${c.name}</div><div class="course-meta">${c.period} · ${c.time}<br>第${c.weeks[0]}–${c.weeks[1]}周 · ${c.teacher}</div><div class="course-place">${c.place}</div></article></div>`);
+        });
+        mobileSchedule.append(card);
+      });
+      const shown = [...new Set(courses.filter(c => week >= c.weeks[0] && week <= c.weeks[1]).map(c => c.name))];
+      document.querySelector("#legend").innerHTML = shown.map(name => `<span class="legend-item"><i class="dot" style="--course:${colors[name][0]}"></i>${name}</span>`).join("") || "本周没有课程";
+    }
+    select.addEventListener("change", render); render();
+  </script>
+</body>
+</html>
